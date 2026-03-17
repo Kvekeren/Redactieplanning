@@ -36,40 +36,44 @@ export async function POST(request: Request) {
     const toCreate = articles.filter((a) => a.id.startsWith("new-"));
     const toUpdate = articles.filter((a) => !a.id.startsWith("new-"));
 
-    const createPromises = toCreate.map((a) =>
-      prisma.article.create({
-        data: {
-          datum: a.datum,
-          onderwerp: a.onderwerp,
-          url: a.url ?? null,
-          naam: a.naam ?? "",
-          status: a.status ?? "",
-          categorie: a.categorie,
-          rerun: a.rerun ?? false,
-          opmerkingen: a.opmerkingen ?? "",
-          positie: a.positie,
-        },
-      })
+    await prisma.$transaction(
+      async (tx) => {
+        await Promise.all([
+          ...toCreate.map((a) =>
+            tx.article.create({
+              data: {
+                datum: a.datum,
+                onderwerp: a.onderwerp,
+                url: a.url ?? null,
+                naam: a.naam ?? "",
+                status: a.status ?? "",
+                categorie: a.categorie,
+                rerun: a.rerun ?? false,
+                opmerkingen: a.opmerkingen ?? "",
+                positie: a.positie,
+              },
+            })
+          ),
+          ...toUpdate.map((a) =>
+            tx.article.update({
+              where: { id: a.id },
+              data: {
+                datum: a.datum,
+                onderwerp: a.onderwerp,
+                url: a.url ?? null,
+                naam: a.naam ?? "",
+                status: a.status ?? "",
+                categorie: a.categorie,
+                rerun: a.rerun ?? false,
+                opmerkingen: a.opmerkingen ?? "",
+                positie: a.positie,
+              },
+            })
+          ),
+        ]);
+      },
+      { timeout: 15000 }
     );
-
-    const updatePromises = toUpdate.map((a) =>
-      prisma.article.update({
-        where: { id: a.id },
-        data: {
-          datum: a.datum,
-          onderwerp: a.onderwerp,
-          url: a.url ?? null,
-          naam: a.naam ?? "",
-          status: a.status ?? "",
-          categorie: a.categorie,
-          rerun: a.rerun ?? false,
-          opmerkingen: a.opmerkingen ?? "",
-          positie: a.positie,
-        },
-      })
-    );
-
-    await prisma.$transaction([...createPromises, ...updatePromises]);
     return NextResponse.json({ success: true, count: articles.length });
   } catch (error) {
     console.error("POST /api/articles:", error);

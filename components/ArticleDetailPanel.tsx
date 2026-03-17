@@ -38,6 +38,7 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
         naam: article.naam ?? "",
         status: article.status ?? "",
         categorie: article.categorie ?? "",
+        rerun: article.rerun ?? false,
         opmerkingen: article.opmerkingen ?? "",
       });
     }
@@ -58,6 +59,7 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
         naam: form.naam ?? "",
         status: form.status ?? "",
         categorie: form.categorie ?? "",
+        rerun: form.rerun ?? false,
         opmerkingen: form.opmerkingen ?? "",
       });
       onClose();
@@ -157,6 +159,33 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
                 className={inputClasses}
                 required
               />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-600">Rerun?</label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, rerun: true }))}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                    form.rerun
+                      ? "bg-gray-800 text-white"
+                      : "border border-gray-200/80 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                  }`}
+                >
+                  Ja
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, rerun: false }))}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition-colors ${
+                    form.rerun !== true
+                      ? "bg-gray-800 text-white"
+                      : "border border-gray-200/80 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300"
+                  }`}
+                >
+                  Nee
+                </button>
+              </div>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-600">Url</label>

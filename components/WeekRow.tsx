@@ -45,13 +45,15 @@ export function WeekRow({ id, weekStart, isActiveWeek, todayStr, articlesByDate,
       id={id}
       className="grid min-w-[900px] grid-cols-[minmax(100px,120px)_repeat(7,minmax(100px,1fr))] gap-2 border-b border-gray-200/80 bg-white pt-6 last:border-b-0"
     >
-      <div
-        className={`sticky left-0 z-10 flex flex-col justify-center border-r border-gray-200/60 px-3 py-3 ${
-          isActiveWeek ? "bg-emerald-100" : "bg-gray-50/30"
-        }`}
-      >
-        <p className="text-sm font-semibold text-gray-800">Wk {weekNum}</p>
-        <p className="text-xs text-gray-500">{formatWeekRange(weekStart)}</p>
+      <div className="sticky left-0 z-10 flex flex-col justify-center border-r border-gray-200/60 px-3 py-3 bg-gray-50/30">
+        <div
+          className={`inline-flex w-fit flex-col rounded-lg px-2.5 py-1.5 ${
+            isActiveWeek ? "bg-emerald-100/90" : ""
+          }`}
+        >
+          <p className="text-sm font-semibold text-gray-800">Wk {weekNum}</p>
+          <p className="text-xs text-gray-500">{formatWeekRange(weekStart)}</p>
+        </div>
       </div>
       {weekDates.map((date) => (
         <DayColumn

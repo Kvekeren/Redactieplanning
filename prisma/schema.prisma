@@ -19,6 +19,7 @@ model Article {
   naam         String   @default("")  // Lizanne, Govert, Iona, Helga, Koen
   status       String   @default("")  // Mee bezig, Gepubliceerd, Ingepland
   categorie    String   @default("")
+  rerun        Boolean  @default(false)
   opmerkingen  String?  @default("")
   positie      Int      @default(0)
   createdAt    DateTime @default(now())

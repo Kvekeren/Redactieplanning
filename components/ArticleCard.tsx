@@ -37,15 +37,26 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         ${isDragging ? "opacity-60 shadow-lg ring-2 ring-blue-300" : ""}
       `}
     >
-      {article.categorie && categoryStyle && (
-        <span
-          className="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium"
-          style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
-        >
-          {article.categorie}
-        </span>
-      )}
-      <p className="pr-10 font-medium text-gray-800 line-clamp-3 text-xs leading-snug">
+      <div className="flex min-h-0 flex-1 flex-col gap-1">
+        <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
+          {article.categorie && categoryStyle && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
+            >
+              {article.categorie}
+            </span>
+          )}
+          {article.rerun && (
+            <span
+              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+              style={{ backgroundColor: "#7B2E83" }}
+            >
+              Rerun
+            </span>
+          )}
+        </div>
+        <p className="min-w-0 font-medium text-gray-800 line-clamp-3 text-xs leading-snug">
         {article.url?.trim() ? (
           <a
             href={article.url}
@@ -59,7 +70,8 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         ) : (
           article.onderwerp
         )}
-      </p>
+        </p>
+      </div>
       {article.naam && (
         <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
           {getStatusColor(article.status) && (

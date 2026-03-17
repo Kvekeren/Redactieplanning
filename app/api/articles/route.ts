@@ -24,6 +24,7 @@ export async function POST(request: Request) {
       naam: string;
       status: string;
       categorie: string;
+      rerun?: boolean;
       opmerkingen?: string;
       positie: number;
     }> };
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
           naam: a.naam ?? "",
           status: a.status ?? "",
           categorie: a.categorie,
+          rerun: a.rerun ?? false,
           opmerkingen: a.opmerkingen ?? "",
           positie: a.positie,
         },
@@ -60,6 +62,7 @@ export async function POST(request: Request) {
           naam: a.naam ?? "",
           status: a.status ?? "",
           categorie: a.categorie,
+          rerun: a.rerun ?? false,
           opmerkingen: a.opmerkingen ?? "",
           positie: a.positie,
         },
@@ -70,6 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, count: articles.length });
   } catch (error) {
     console.error("POST /api/articles:", error);
-    return NextResponse.json({ error: "Failed to save articles" }, { status: 500 });
+    const message = error instanceof Error ? error.message : "Failed to save articles";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

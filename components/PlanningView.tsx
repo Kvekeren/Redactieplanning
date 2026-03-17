@@ -89,7 +89,7 @@ export function PlanningView() {
   const [isSaving, setIsSaving] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
-  const [saveMessage, setSaveMessage] = useState<"success" | "error" | null>(null);
+  const [saveMessage, setSaveMessage] = useState<"success" | { error: string } | null>(null);
   const [visibleMonth, setVisibleMonth] = useState<string>("");
 
   const fetchArticles = useCallback(async () => {
@@ -155,6 +155,7 @@ export function PlanningView() {
       naam: "",
       status: "",
       categorie: "",
+      rerun: false,
       opmerkingen: "",
       positie: 0,
       createdAt: new Date().toISOString(),
@@ -186,14 +187,18 @@ export function PlanningView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ articles }),
       });
-      if (!res.ok) throw new Error("Save failed");
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        const msg = (errBody as { error?: string })?.error ?? `Save failed (${res.status})`;
+        throw new Error(msg);
+      }
       setHasUnsavedChanges(false);
       await fetchArticles();
       setSaveMessage("success");
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
       console.error(err);
-      setSaveMessage("error");
+      setSaveMessage({ error: err instanceof Error ? err.message : "Opslaan mislukt" });
     } finally {
       setIsSaving(false);
     }
@@ -319,17 +324,29 @@ export function PlanningView() {
                 const categoryStyle = getCategoryStyle(activeArticle.categorie);
                 return (
                   <div className="relative min-w-[140px] max-w-[180px] cursor-grabbing rounded-xl border border-gray-200 bg-white p-2 shadow-lg text-gray-800">
-                    {activeArticle.categorie && categoryStyle && (
-                      <span
-                        className="absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium"
-                        style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
-                      >
-                        {activeArticle.categorie}
-                      </span>
-                    )}
-                    <p className="pr-10 font-medium line-clamp-3 text-xs leading-snug">
-                      {activeArticle.onderwerp}
-                    </p>
+                    <div className="flex min-h-0 flex-1 flex-col gap-1">
+                      <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
+                        {activeArticle.categorie && categoryStyle && (
+                          <span
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                            style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
+                          >
+                            {activeArticle.categorie}
+                          </span>
+                        )}
+                        {activeArticle.rerun && (
+                          <span
+                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                            style={{ backgroundColor: "#7B2E83" }}
+                          >
+                            Rerun
+                          </span>
+                        )}
+                      </div>
+                      <p className="min-w-0 font-medium line-clamp-3 text-xs leading-snug">
+                        {activeArticle.onderwerp}
+                      </p>
+                    </div>
                     {activeArticle.naam && (
                       <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
                         {getStatusColor(activeArticle.status) && (
@@ -376,7 +393,7 @@ export function PlanningView() {
               : "bg-red-600 text-white"
           }`}
         >
-          {saveMessage === "success" ? "Wijzigingen opgeslagen" : "Opslaan mislukt"}
+          {saveMessage === "success" ? "Wijzigingen opgeslagen" : (typeof saveMessage === "object" ? saveMessage.error : "Opslaan mislukt")}
         </div>
       )}
     </div>

@@ -69,9 +69,7 @@ export async function POST(request: Request) {
       })
     );
 
-    await prisma.$transaction([...createPromises, ...updatePromises], {
-      timeout: 15000, // 15s – Vercel/serverless cold starts kunnen de default 5s overschrijden
-    });
+    await prisma.$transaction([...createPromises, ...updatePromises]);
     return NextResponse.json({ success: true, count: articles.length });
   } catch (error) {
     console.error("POST /api/articles:", error);

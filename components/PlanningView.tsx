@@ -91,12 +91,38 @@ export function PlanningView() {
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [saveMessage, setSaveMessage] = useState<"success" | { error: string } | null>(null);
   const [visibleMonth, setVisibleMonth] = useState<string>("");
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const fetchArticles = useCallback(async () => {
-    const res = await fetch("/api/articles");
-    const data = await res.json();
-    setArticles(data);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const res = await fetch("/api/articles");
+      const text = await res.text();
+      if (text.trim().startsWith("<")) {
+        throw new Error(
+          "Server gaf een foutpagina (HTML). Bekijk de terminal waar 'npm run dev' draait voor de echte foutmelding."
+        );
+      }
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error("Server antwoordde met ongeldige data");
+      }
+      if (!res.ok) {
+        const msg = (data as { error?: string })?.error ?? `Fout bij laden (${res.status})`;
+        throw new Error(msg);
+      }
+      if (!Array.isArray(data)) {
+        throw new Error("Ongeldige data van server");
+      }
+      setArticles(data);
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : "Kon planning niet laden");
+      setArticles([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -273,6 +299,27 @@ export function PlanningView() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f8f9fa]">
         <p className="text-gray-500">Planning laden…</p>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f8f9fa] p-6">
+        <p className="text-center text-red-600">{loadError}</p>
+        <p className="text-center text-sm text-gray-500">
+          Controleer of <code className="rounded bg-gray-200 px-1">DATABASE_URL</code> in .env een geldige Postgres-URL is (bijv. Neon).
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            setLoading(true);
+            fetchArticles();
+          }}
+          className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
+        >
+          Opnieuw proberen
+        </button>
       </div>
     );
   }

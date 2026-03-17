@@ -1,36 +1,97 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Redactieplanning
 
-## Getting Started
+Webapp voor de redactieplanning van een tuinierwebsite. Vervangt de Excel-planning met een gebruiksvriendelijke interface met drag-and-drop.
 
-First, run the development server:
+## Functies
+
+- **Weekweergave** – Kalenderachtige planning met kolommen per dag (ma–zo)
+- **Artikelkaarten** – Onderwerp, Wie en Categorie per kaart
+- **Drag-and-drop** – Kaarten verslepen naar een andere datum
+- **Detailpaneel** – Klik op een kaart om Onderwerp, Datum, Wie, Categorie en Opmerkingen te bewerken
+- **Opslaan** – Wijzigingen worden pas opgeslagen na klik op "Wijzigingen opslaan"
+- **Waarschuwing** – Bij sluiten met onopgeslagen wijzigingen
+
+## Ontwikkeling
+
+### Vereisten
+
+- Node.js 18+
+- npm
+
+### Installatie
+
+```bash
+npm install
+```
+
+### Database
+
+De app gebruikt SQLite lokaal. De database wordt automatisch aangemaakt bij de eerste migratie.
+
+```bash
+# Migratie uitvoeren (indien nodig)
+npx prisma migrate dev
+
+# Data importeren uit Excel
+npm run seed
+```
+
+Zorg dat `redactieplanning.xlsx` in de projectmap staat voor de seed.
+
+### Starten
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Database-URL
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Voor lokaal gebruik staat in `.env`:
 
-## Learn More
+```
+DATABASE_URL="file:./prisma/dev.db"
+```
 
-To learn more about Next.js, take a look at the following resources:
+Voor Vercel/Neon (Postgres) stel je `DATABASE_URL` in op een connection string:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+DATABASE_URL="postgresql://..."
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment (Vercel)
 
-## Deploy on Vercel
+1. Maak een Neon (of andere Postgres) database aan
+2. Stel `DATABASE_URL` in als environment variable
+3. Pas het Prisma schema aan: `provider = "postgresql"` en voeg `url = env("DATABASE_URL")` toe (voor Prisma 7: zie configuratie in `prisma.config.ts`)
+4. Deploy naar Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Let op:** SQLite werkt niet op Vercel serverless. Gebruik Postgres voor productie.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Projectstructuur
+
+```
+app/
+  api/articles/route.ts   # GET / POST API
+  page.tsx
+  layout.tsx
+components/
+  ArticleCard.tsx         # Draggable kaart
+  ArticleDetailPanel.tsx  # Zijpaneel voor bewerken
+  DayColumn.tsx          # Drop zone per dag
+  PlanningView.tsx        # Hoofdcontainer
+  SaveBar.tsx            # Opslaan-balk
+  WeekNavigator.tsx      # Week navigatie
+lib/
+  prisma.ts              # Prisma client
+  types.ts               # TypeScript types
+prisma/
+  schema.prisma          # Datamodel
+scripts/
+  seed-from-excel.js     # Excel import
+```
+
+## Licentie
+
+Privé / intern gebruik.

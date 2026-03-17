@@ -1,0 +1,75 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  try {
+    const articles = await prisma.article.findMany({
+      orderBy: [{ datum: "asc" }, { positie: "asc" }],
+    });
+    return NextResponse.json(articles);
+  } catch (error) {
+    console.error("GET /api/articles:", error);
+    return NextResponse.json({ error: "Failed to fetch articles" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { articles } = body as { articles: Array<{
+      id: string;
+      datum: string;
+      onderwerp: string;
+      url?: string | null;
+      naam: string;
+      status: string;
+      categorie: string;
+      opmerkingen?: string;
+      positie: number;
+    }> };
+
+    if (!Array.isArray(articles)) {
+      return NextResponse.json({ error: "Invalid request: articles array required" }, { status: 400 });
+    }
+
+    const toCreate = articles.filter((a) => a.id.startsWith("new-"));
+    const toUpdate = articles.filter((a) => !a.id.startsWith("new-"));
+
+    const createPromises = toCreate.map((a) =>
+      prisma.article.create({
+        data: {
+          datum: a.datum,
+          onderwerp: a.onderwerp,
+          url: a.url ?? null,
+          naam: a.naam ?? "",
+          status: a.status ?? "",
+          categorie: a.categorie,
+          opmerkingen: a.opmerkingen ?? "",
+          positie: a.positie,
+        },
+      })
+    );
+
+    const updatePromises = toUpdate.map((a) =>
+      prisma.article.update({
+        where: { id: a.id },
+        data: {
+          datum: a.datum,
+          onderwerp: a.onderwerp,
+          url: a.url ?? null,
+          naam: a.naam ?? "",
+          status: a.status ?? "",
+          categorie: a.categorie,
+          opmerkingen: a.opmerkingen ?? "",
+          positie: a.positie,
+        },
+      })
+    );
+
+    await prisma.$transaction([...createPromises, ...updatePromises]);
+    return NextResponse.json({ success: true, count: articles.length });
+  } catch (error) {
+    console.error("POST /api/articles:", error);
+    return NextResponse.json({ error: "Failed to save articles" }, { status: 500 });
+  }
+}

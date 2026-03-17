@@ -1,0 +1,26 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// SQLite for local dev; use DATABASE_URL with postgresql:// for Vercel/Neon
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Article {
+  id           String   @id @default(cuid())
+  datum        String   // YYYY-MM-DD
+  onderwerp    String
+  url          String?  // optionele url van het artikel
+  naam         String   @default("")  // Lizanne, Govert, Iona, Helga, Koen
+  status       String   @default("")  // Mee bezig, Gepubliceerd, Ingepland
+  categorie    String   @default("")
+  opmerkingen  String?  @default("")
+  positie      Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

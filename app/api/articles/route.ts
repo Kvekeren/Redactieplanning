@@ -35,9 +35,21 @@ export async function POST(request: Request) {
 
     const toCreate = articles.filter((a) => a.id.startsWith("new-"));
     const toUpdate = articles.filter((a) => !a.id.startsWith("new-"));
+    const incomingIds = new Set(toUpdate.map((a) => a.id));
 
     await prisma.$transaction(
       async (tx) => {
+        // Verwijder artikelen die niet meer in de planning staan
+        const toDelete = await tx.article.findMany({
+          select: { id: true },
+        });
+        const idsToDelete = toDelete
+          .map((a) => a.id)
+          .filter((id) => !incomingIds.has(id));
+        if (idsToDelete.length > 0) {
+          await tx.article.deleteMany({ where: { id: { in: idsToDelete } } });
+        }
+
         await Promise.all([
           ...toCreate.map((a) =>
             tx.article.create({

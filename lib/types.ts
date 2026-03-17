@@ -12,3 +12,11 @@ export interface Article {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Melding {
+  id: string;
+  weekStart: string;
+  tekst: string;
+  createdAt: string;
+  updatedAt: string;
+}

@@ -12,11 +12,12 @@ import {
 } from "@dnd-kit/core";
 import { ArticleDetailPanel } from "./ArticleDetailPanel";
 import { DayColumn } from "./DayColumn";
+import { MeldingPanel } from "./MeldingPanel";
 import { SaveBar } from "./SaveBar";
 import { WeekRow } from "./WeekRow";
 import { getCategoryStyle } from "@/lib/categoryColors";
 import { getStatusColor } from "@/lib/statusColors";
-import type { Article } from "@/lib/types";
+import type { Article, Melding } from "@/lib/types";
 
 function getWeekStart(date: Date): string {
   const d = new Date(date);
@@ -82,6 +83,19 @@ function getMonthFromWeekStart(weekStart: string): string {
   return d.toLocaleDateString("nl-NL", { month: "long" });
 }
 
+function getYearFromWeekStart(weekStart: string): number {
+  const d = new Date(weekStart + "T12:00:00");
+  return d.getFullYear();
+}
+
+function getISOWeek(dateStr: string): number {
+  const d = new Date(dateStr + "T12:00:00");
+  const dayNum = d.getDay() || 7;
+  d.setDate(d.getDate() + 4 - dayNum);
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
 export function PlanningView() {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +105,10 @@ export function PlanningView() {
   const [activeArticle, setActiveArticle] = useState<Article | null>(null);
   const [saveMessage, setSaveMessage] = useState<"success" | { error: string } | null>(null);
   const [visibleMonth, setVisibleMonth] = useState<string>("");
+  const [visibleYear, setVisibleYear] = useState<number>(new Date().getFullYear());
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [meldingen, setMeldingen] = useState<Melding[]>([]);
+  const [meldingEditWeek, setMeldingEditWeek] = useState<string | null>(null);
 
   const fetchArticles = useCallback(async () => {
     setLoadError(null);
@@ -125,9 +142,25 @@ export function PlanningView() {
     }
   }, []);
 
+  const fetchMeldingen = useCallback(async () => {
+    try {
+      const res = await fetch("/api/meldingen");
+      const text = await res.text();
+      if (text.trim().startsWith("<")) return;
+      const data = JSON.parse(text);
+      if (Array.isArray(data)) setMeldingen(data);
+    } catch {
+      setMeldingen([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchArticles();
   }, [fetchArticles]);
+
+  useEffect(() => {
+    if (!loading) fetchMeldingen();
+  }, [loading, fetchMeldingen]);
 
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -204,22 +237,87 @@ export function PlanningView() {
     setHasUnsavedChanges(true);
   };
 
+  const handleDetailDelete = (article: Article) => {
+    setArticles((prev) => prev.filter((a) => a.id !== article.id));
+    setSelectedArticle(null);
+    setHasUnsavedChanges(true);
+  };
+
+  const getMeldingForWeek = useCallback(
+    (weekStart: string): string | null => {
+      const m = meldingen.find((x) => x.weekStart === weekStart);
+      return m?.tekst ?? null;
+    },
+    [meldingen]
+  );
+
+  const handleMeldingSave = (weekStart: string, tekst: string) => {
+    setMeldingen((prev) => {
+      const existing = prev.find((m) => m.weekStart === weekStart);
+      if (tekst === "") {
+        return prev.filter((m) => m.weekStart !== weekStart);
+      }
+      if (existing) {
+        return prev.map((m) => (m.weekStart === weekStart ? { ...m, tekst } : m));
+      }
+      return [
+        ...prev,
+        {
+          id: `new-${Date.now()}`,
+          weekStart,
+          tekst,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+    });
+    setMeldingEditWeek(null);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleExport = () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      articles,
+      meldingen,
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `redactieplanning-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setSaveMessage(null);
     try {
-      const res = await fetch("/api/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articles }),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        const msg = (errBody as { error?: string })?.error ?? `Save failed (${res.status})`;
+      const [articlesRes, meldingenRes] = await Promise.all([
+        fetch("/api/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ articles }),
+        }),
+        fetch("/api/meldingen", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meldingen }),
+        }),
+      ]);
+      if (!articlesRes.ok) {
+        const errBody = await articlesRes.json().catch(() => ({}));
+        const msg = (errBody as { error?: string })?.error ?? `Save failed (${articlesRes.status})`;
+        throw new Error(msg);
+      }
+      if (!meldingenRes.ok) {
+        const errBody = await meldingenRes.json().catch(() => ({}));
+        const msg = (errBody as { error?: string })?.error ?? "Meldingen opslaan mislukt";
         throw new Error(msg);
       }
       setHasUnsavedChanges(false);
-      await fetchArticles();
+      await Promise.all([fetchArticles(), fetchMeldingen()]);
       setSaveMessage("success");
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (err) {
@@ -266,10 +364,11 @@ export function PlanningView() {
       }
 
       if (topmostWeekStart) {
-        const month = getMonthFromWeekStart(topmostWeekStart);
-        setVisibleMonth(month);
+        setVisibleMonth(getMonthFromWeekStart(topmostWeekStart));
+        setVisibleYear(getYearFromWeekStart(topmostWeekStart));
       } else if (allWeeks.length > 0) {
         setVisibleMonth(getMonthFromWeekStart(allWeeks[0]));
+        setVisibleYear(getYearFromWeekStart(allWeeks[0]));
       }
     };
 
@@ -325,12 +424,26 @@ export function PlanningView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] pb-24">
+    <div className="flex min-h-screen flex-col bg-[#f8f9fa] pb-24">
       <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
-        <div className="mx-auto flex max-w-[1400px] items-center justify-center px-4">
-          <h1 className="text-xl font-semibold text-gray-800 capitalize">
-            {visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
+        <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
+          <a
+            href="https://www.gardenersworldmagazine.nl/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="justify-self-start"
+          >
+            <img
+              src="/GW-logo-transparant.webp"
+              alt="Gardeners' World"
+              className="h-10 w-auto object-contain"
+            />
+          </a>
+          <h1 className="text-center text-xl font-semibold text-gray-800 capitalize">
+            {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
+            {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
           </h1>
+          <div />
         </div>
       </header>
 
@@ -357,9 +470,11 @@ export function PlanningView() {
                   weekStart={ws}
                   isActiveWeek={ws === currentWeekStart}
                   articlesByDate={getArticlesByDateForWeek(ws)}
+                  melding={getMeldingForWeek(ws)}
                   todayStr={todayStr}
                   onCardClick={handleCardClick}
                   onAddCard={handleAddCard}
+                  onMeldingClick={setMeldingEditWeek}
                 />
               ))}
             </div>
@@ -413,6 +528,31 @@ export function PlanningView() {
         </DndContext>
       </main>
 
+      <footer className="mt-auto flex justify-center border-t border-gray-200/60 bg-white/50 py-3">
+        <button
+          type="button"
+          onClick={handleExport}
+          className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+          aria-label="Planning exporteren als back-up"
+          title="Planning exporteren"
+        >
+          <svg
+            className="h-5 w-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+            />
+          </svg>
+        </button>
+      </footer>
+
       {selectedArticle && (
         <>
           <div
@@ -424,8 +564,19 @@ export function PlanningView() {
             article={selectedArticle}
             onClose={() => setSelectedArticle(null)}
             onSave={handleDetailSave}
+            onDelete={handleDetailDelete}
           />
         </>
+      )}
+
+      {meldingEditWeek && (
+        <MeldingPanel
+          weekStart={meldingEditWeek}
+          weekLabel={`Wk ${getISOWeek(meldingEditWeek)}`}
+          initialTekst={getMeldingForWeek(meldingEditWeek) ?? ""}
+          onSave={(tekst) => handleMeldingSave(meldingEditWeek, tekst)}
+          onClose={() => setMeldingEditWeek(null)}
+        />
       )}
 
       {hasUnsavedChanges && (

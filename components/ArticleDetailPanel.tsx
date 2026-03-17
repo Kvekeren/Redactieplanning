@@ -9,9 +9,10 @@ interface ArticleDetailPanelProps {
   article: Article | null;
   onClose: () => void;
   onSave: (article: Article) => void;
+  onDelete?: (article: Article) => void;
 }
 
-export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPanelProps) {
+export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: ArticleDetailPanelProps) {
   const [form, setForm] = useState<Partial<Article>>({});
 
   const NAAM_OPTIES = ["Lizanne", "Govert", "Iona", "Helga", "Koen"] as const;
@@ -62,6 +63,13 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
         rerun: form.rerun ?? false,
         opmerkingen: form.opmerkingen ?? "",
       });
+      onClose();
+    }
+  };
+
+  const handleDelete = () => {
+    if (onDelete && window.confirm("Weet je zeker dat je deze kaart wilt verwijderen?")) {
+      onDelete(article);
       onClose();
     }
   };
@@ -196,6 +204,19 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
                 placeholder="https://..."
                 className={inputClasses}
               />
+              {form.url?.trim() && (
+                <a
+                  href={form.url.startsWith("http") ? form.url : `https://${form.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 hover:underline"
+                >
+                  <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  Open link in nieuw tab
+                </a>
+              )}
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-600">Categorie</label>
@@ -233,20 +254,31 @@ export function ArticleDetailPanel({ article, onClose, onSave }: ArticleDetailPa
               />
             </div>
           </div>
-          <div className="mt-auto flex gap-3 pt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-xl border border-gray-200/80 px-4 py-2 font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
-            >
-              Annuleren
-            </button>
-            <button
-              type="submit"
-              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 transition-colors"
-            >
-              {isNew ? "Kaart toevoegen" : "Wijzigingen toepassen"}
-            </button>
+          <div className="mt-auto flex flex-col gap-3 pt-6">
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 rounded-xl border border-gray-200/80 px-4 py-2 font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
+              >
+                Annuleren
+              </button>
+              <button
+                type="submit"
+                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 transition-colors"
+              >
+                {isNew ? "Kaart toevoegen" : "Wijzigingen toepassen"}
+              </button>
+            </div>
+            {!isNew && onDelete && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                className="w-full rounded-xl border border-red-200 px-4 py-2 font-medium text-red-600 bg-white hover:bg-red-50 hover:border-red-300 transition-colors"
+              >
+                Verwijder
+              </button>
+            )}
           </div>
         </form>
       </div>

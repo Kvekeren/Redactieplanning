@@ -57,31 +57,40 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
           )}
         </div>
         <p className="min-w-0 font-medium text-gray-800 line-clamp-3 text-xs leading-snug">
-        {article.url?.trim() ? (
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-gray-800 hover:underline cursor-pointer"
-          >
-            {article.onderwerp}
-          </a>
-        ) : (
-          article.onderwerp
-        )}
+          {article.onderwerp}
         </p>
       </div>
-      {article.naam && (
-        <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
-          {getStatusColor(article.status) && (
-            <span
-              className={`h-1.5 w-1.5 shrink-0 rounded-full ${getStatusColor(article.status)}`}
-              aria-hidden
-            />
+      {(article.naam || article.url?.trim()) && (
+        <div className="mt-1 flex items-end justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {article.naam && (
+              <p className="flex items-center gap-1.5 text-[11px] text-gray-500">
+                {getStatusColor(article.status) && (
+                  <span
+                    className={`h-1.5 w-1.5 shrink-0 rounded-full ${getStatusColor(article.status)}`}
+                    aria-hidden
+                  />
+                )}
+                {article.naam}
+              </p>
+            )}
+          </div>
+          {article.url?.trim() && (
+            <a
+              href={article.url.startsWith("http") ? article.url : `https://${article.url}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-blue-600 transition-colors"
+              title="Open webpagina"
+              aria-label="Open webpagina"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
           )}
-          {article.naam}
-        </p>
+        </div>
       )}
     </div>
   );

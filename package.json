@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "node scripts/seed-from-excel.js"
+    "seed": "node scripts/seed-from-excel.js",
+    "migrate:sqlite-to-postgres": "node scripts/migrate-sqlite-to-postgres.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

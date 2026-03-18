@@ -3,10 +3,10 @@
 export function PlanningSkeleton() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fa]">
-      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
+      <header className="sticky top-0 z-30 border-b border-white/20 bg-[#4C8336] px-6 py-4">
         <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
-          <div className="h-10 w-32 animate-pulse rounded bg-gray-200" />
-          <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
+          <div className="h-10 w-32 animate-pulse rounded bg-white/30" />
+          <div className="h-8 w-48 animate-pulse rounded bg-white/30" />
           <div />
         </div>
       </header>

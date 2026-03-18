@@ -116,6 +116,8 @@ export function PlanningView() {
   const [filterCategorie, setFilterCategorie] = useState<string>("");
   const [filterNaam, setFilterNaam] = useState<string>("");
   const [filterRerun, setFilterRerun] = useState<string>(""); // "" = alle, "ja" = alleen rerun, "nee" = geen rerun
+  const [showFilters, setShowFilters] = useState(false);
+  const filterPanelRef = useRef<HTMLDivElement>(null);
 
   type UndoState = { articles: Article[]; meldingen: Melding[] };
   const [undoStack, setUndoStack] = useState<UndoState[]>([]);
@@ -507,6 +509,18 @@ export function PlanningView() {
     };
   }, [allWeeks]);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (filterPanelRef.current && !filterPanelRef.current.contains(e.target as Node)) {
+        setShowFilters(false);
+      }
+    };
+    if (showFilters) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [showFilters]);
+
   const filteredArticles = useMemo(() => {
     return articles.filter((a) => {
       const q = searchQuery.trim().toLowerCase();
@@ -566,8 +580,8 @@ export function PlanningView() {
 
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fa] pb-24">
-      <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
-        <div className="mx-auto max-w-[1400px] space-y-3 px-4">
+      <header className="sticky top-0 z-30 border-b border-white/20 bg-[#4C8336] px-6 py-4">
+        <div className="mx-auto max-w-[1400px] px-4">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <a
               href="https://www.gardenersworldmagazine.nl/"
@@ -578,77 +592,103 @@ export function PlanningView() {
               <img
                 src="/GW-logo-transparant.webp"
                 alt="Gardeners' World"
-                className="h-10 w-auto object-contain"
+                className="h-10 w-auto object-contain brightness-0 invert"
               />
             </a>
-            <h1 className="text-center text-2xl font-semibold text-gray-800 capitalize">
+            <h1 className="text-center text-2xl font-semibold text-white capitalize">
               {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
               {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
             </h1>
-            <div />
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="search"
-              placeholder="Zoeken…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="max-w-[200px] rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400/30"
-            />
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
-            >
-              <option value="">Alle statussen</option>
-              {uniqueStatuses.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-            <select
-              value={filterCategorie}
-              onChange={(e) => setFilterCategorie(e.target.value)}
-              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
-            >
-              <option value="">Alle categorieën</option>
-              {uniqueCategories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-            <select
-              value={filterNaam}
-              onChange={(e) => setFilterNaam(e.target.value)}
-              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
-            >
-              <option value="">Alle namen</option>
-              {uniqueNamen.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-            <select
-              value={filterRerun}
-              onChange={(e) => setFilterRerun(e.target.value)}
-              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
-            >
-              <option value="">Rerun: alle</option>
-              <option value="ja">Alleen rerun</option>
-              <option value="nee">Geen rerun</option>
-            </select>
-            {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun) && (
+            <div className="relative flex justify-end" ref={filterPanelRef}>
               <button
                 type="button"
-                onClick={() => {
-                  setSearchQuery("");
-                  setFilterStatus("");
-                  setFilterCategorie("");
-                  setFilterNaam("");
-                  setFilterRerun("");
-                }}
-                className="text-sm text-gray-500 hover:text-gray-700 underline"
+                onClick={() => setShowFilters((v) => !v)}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  showFilters || searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun
+                    ? "bg-white/30 text-white hover:bg-white/40"
+                    : "bg-white/15 text-white hover:bg-white/25"
+                }`}
+                aria-expanded={showFilters}
+                aria-haspopup="true"
+                aria-label="Filter"
               >
-                Filters wissen
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                </svg>
+                {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun) && (
+                  <span className="flex h-2 w-2 rounded-full bg-white" aria-hidden />
+                )}
               </button>
-            )}
+              {showFilters && (
+                <div className="absolute right-0 top-full z-20 mt-2 w-80 rounded-lg border border-gray-200 bg-white p-4 shadow-lg">
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="search"
+                      placeholder="Zoeken…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:border-[#4C8336] focus:outline-none focus:ring-1 focus:ring-[#4C8336]/30"
+                    />
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#4C8336] focus:outline-none"
+                    >
+                      <option value="">Alle statussen</option>
+                      {uniqueStatuses.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterCategorie}
+                      onChange={(e) => setFilterCategorie(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#4C8336] focus:outline-none"
+                    >
+                      <option value="">Alle categorieën</option>
+                      {uniqueCategories.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterNaam}
+                      onChange={(e) => setFilterNaam(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#4C8336] focus:outline-none"
+                    >
+                      <option value="">Alle namen</option>
+                      {uniqueNamen.map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterRerun}
+                      onChange={(e) => setFilterRerun(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#4C8336] focus:outline-none"
+                    >
+                      <option value="">Rerun: alle</option>
+                      <option value="ja">Alleen rerun</option>
+                      <option value="nee">Geen rerun</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterStatus("");
+                        setFilterCategorie("");
+                        setFilterNaam("");
+                        setFilterRerun("");
+                      }}
+                      className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                        searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun
+                          ? "bg-[#4C8336] text-white hover:bg-[#3d6a2b]"
+                          : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      Filters wissen
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

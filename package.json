@@ -9,10 +9,12 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/seed-from-excel.js",
-    "migrate:sqlite-to-postgres": "node scripts/migrate-sqlite-to-postgres.js"
+    "migrate:sqlite-to-postgres": "node scripts/migrate-sqlite-to-postgres.js",
+    "normalize:hk-plus": "node scripts/hk-plus-naar-helga.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@prisma/adapter-better-sqlite3": "^7.5.0",
     "@prisma/adapter-pg": "^7.5.0",

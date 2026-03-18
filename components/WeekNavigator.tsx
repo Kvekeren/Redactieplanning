@@ -11,8 +11,14 @@ function formatWeekRange(dateStr: string) {
   const start = new Date(dateStr + "T12:00:00");
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-  return `${fmt(start)} – ${fmt(end)}`;
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+  const startMonth = start.toLocaleDateString("nl-NL", { month: "long" });
+  const endMonth = end.toLocaleDateString("nl-NL", { month: "long" });
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${startMonth}`;
+  }
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
 }
 
 export function WeekNavigator({ weekStart, onPrev, onNext, onToday }: WeekNavigatorProps) {

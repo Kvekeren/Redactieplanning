@@ -1,6 +1,6 @@
 "use client";
 
-import { useDraggable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { getCategoryStyle } from "@/lib/categoryColors";
 import { getStatusColor } from "@/lib/statusColors";
@@ -12,14 +12,15 @@ interface ArticleCardProps {
 }
 
 export function ArticleCard({ article, onClick }: ArticleCardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: article.id,
     data: { article },
   });
 
-  const style = transform
-    ? { transform: CSS.Translate.toString(transform) }
-    : undefined;
+  const style =
+    transform != null
+      ? { transform: CSS.Transform.toString(transform), transition }
+      : { transition };
 
   const categoryStyle = getCategoryStyle(article.categorie);
 
@@ -41,7 +42,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
           {article.categorie && categoryStyle && (
             <span
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+              className="rounded px-1.5 py-0.5 text-xs font-medium"
               style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
             >
               {article.categorie}
@@ -49,14 +50,14 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
           )}
           {article.rerun && (
             <span
-              className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+              className="rounded px-1.5 py-0.5 text-xs font-medium text-white"
               style={{ backgroundColor: "#7B2E83" }}
             >
               Rerun
             </span>
           )}
         </div>
-        <p className="min-w-0 font-medium text-gray-800 line-clamp-3 text-xs leading-snug">
+        <p className="min-w-0 font-medium text-gray-800 line-clamp-3 text-sm leading-snug">
           {article.onderwerp}
         </p>
       </div>
@@ -64,7 +65,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         <div className="mt-1 flex items-end justify-between gap-2">
           <div className="min-w-0 flex-1">
             {article.naam && (
-              <p className="flex items-center gap-1.5 text-[11px] text-gray-500">
+              <p className="flex items-center gap-1.5 text-sm text-gray-500">
                 {getStatusColor(article.status) && (
                   <span
                     className={`h-1.5 w-1.5 shrink-0 rounded-full ${getStatusColor(article.status)}`}

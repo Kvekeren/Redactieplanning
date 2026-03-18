@@ -37,12 +37,12 @@ async function main() {
   });
   console.log(`KE/KE* → Koen: ${ke.count} artikelen bijgewerkt`);
 
-  // HK / HK* → Helga
+  // HK / HK* / HK+ → Helga
   const hk = await prisma.article.updateMany({
-    where: { OR: [{ naam: "HK" }, { naam: "HK*" }] },
+    where: { OR: [{ naam: "HK" }, { naam: "HK*" }, { naam: "HK+" }] },
     data: { naam: "Helga" },
   });
-  console.log(`HK/HK* → Helga: ${hk.count} artikelen bijgewerkt`);
+  console.log(`HK/HK*/HK+ → Helga: ${hk.count} artikelen bijgewerkt`);
 
   // ID / ID* → Iona
   const id = await prisma.article.updateMany({

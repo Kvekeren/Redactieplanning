@@ -16,14 +16,21 @@ function formatWeekRange(dateStr: string) {
   const start = new Date(dateStr + "T12:00:00");
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-  return `${fmt(start)} – ${fmt(end)}`;
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+  const startMonth = start.toLocaleDateString("nl-NL", { month: "long" });
+  const endMonth = end.toLocaleDateString("nl-NL", { month: "long" });
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${startMonth}`;
+  }
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
 }
 
 interface WeekRowProps {
   id?: string;
   weekStart: string;
   isActiveWeek?: boolean;
+  isPastWeek?: boolean;
   todayStr: string;
   articlesByDate: Record<string, Article[]>;
   melding: string | null;
@@ -36,6 +43,7 @@ export function WeekRow({
   id,
   weekStart,
   isActiveWeek,
+  isPastWeek,
   todayStr,
   articlesByDate,
   melding,
@@ -58,20 +66,28 @@ export function WeekRow({
   return (
     <div
       id={id}
-      className="grid min-w-[900px] grid-cols-[minmax(100px,120px)_repeat(7,minmax(100px,1fr))] gap-2 border-b border-gray-200/80 bg-white pt-6 last:border-b-0"
+      className={`grid min-w-[900px] grid-cols-[minmax(100px,120px)_repeat(7,minmax(100px,1fr))] gap-2 pt-6 transition-colors ${
+        isPastWeek ? "bg-gray-100/80" : "bg-white"
+      }`}
     >
       <div
-        className="sticky left-0 z-10 flex flex-col gap-2 border-r border-gray-200/60 px-3 py-3 bg-gray-50/30"
+        className={`sticky left-0 z-10 flex flex-col gap-2 px-3 py-3 transition-colors ${
+          isPastWeek ? "bg-gray-200/40" : "bg-gray-50/30"
+        }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
         <div
           className={`inline-flex w-fit flex-col rounded-lg px-2.5 py-1.5 ${
-            isActiveWeek ? "bg-emerald-100/90" : ""
+            isActiveWeek ? "bg-emerald-100/90" : isPastWeek ? "bg-gray-200/60" : ""
           }`}
         >
-          <p className="text-sm font-semibold text-gray-800">Wk {weekNum}</p>
-          <p className="text-xs text-gray-500">{formatWeekRange(weekStart)}</p>
+          <p className={`text-base font-semibold ${isPastWeek ? "text-gray-600" : "text-gray-800"}`}>
+            Week {weekNum}
+          </p>
+          <p className={`text-sm ${isPastWeek ? "text-gray-500" : "text-gray-500"}`}>
+            {formatWeekRange(weekStart)}
+          </p>
         </div>
         {melding ? (
           <button
@@ -80,7 +96,7 @@ export function WeekRow({
             className="inline-flex w-fit max-w-full flex-col rounded-lg px-2.5 py-1.5 text-left transition-opacity hover:opacity-95"
             style={{ backgroundColor: "#FFF8DC" }}
           >
-            <p className="text-xs text-amber-900/90">{melding}</p>
+            <p className="text-sm text-amber-900/90">{melding}</p>
           </button>
         ) : showPlus ? (
           <button
@@ -90,7 +106,7 @@ export function WeekRow({
             style={{ backgroundColor: "#FFF8DC" }}
             aria-label="Melding toevoegen"
           >
-            <svg className="h-3.5 w-3.5 text-amber-800/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 text-amber-800/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -102,6 +118,7 @@ export function WeekRow({
           date={date}
           articles={articlesByDate[date] ?? []}
           isActiveDay={date === todayStr}
+          isPastWeek={isPastWeek}
           onCardClick={onCardClick}
           onAddCard={onAddCard}
         />

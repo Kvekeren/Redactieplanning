@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -10,9 +10,11 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { ArticleDetailPanel } from "./ArticleDetailPanel";
 import { DayColumn } from "./DayColumn";
 import { MeldingPanel } from "./MeldingPanel";
+import { PlanningSkeleton } from "./PlanningSkeleton";
 import { SaveBar } from "./SaveBar";
 import { WeekRow } from "./WeekRow";
 import { getCategoryStyle } from "@/lib/categoryColors";
@@ -109,6 +111,72 @@ export function PlanningView() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [meldingen, setMeldingen] = useState<Melding[]>([]);
   const [meldingEditWeek, setMeldingEditWeek] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterStatus, setFilterStatus] = useState<string>("");
+  const [filterCategorie, setFilterCategorie] = useState<string>("");
+  const [filterNaam, setFilterNaam] = useState<string>("");
+  const [filterRerun, setFilterRerun] = useState<string>(""); // "" = alle, "ja" = alleen rerun, "nee" = geen rerun
+
+  type UndoState = { articles: Article[]; meldingen: Melding[] };
+  const [undoStack, setUndoStack] = useState<UndoState[]>([]);
+  const [redoStack, setRedoStack] = useState<UndoState[]>([]);
+  const isUndoRedoRef = useRef(false);
+  const MAX_UNDO = 50;
+
+  const pushUndo = useCallback(() => {
+    if (isUndoRedoRef.current) return;
+    setUndoStack((prev) => {
+      const next = [...prev, { articles: [...articles], meldingen: [...meldingen] }];
+      return next.slice(-MAX_UNDO);
+    });
+    setRedoStack([]);
+  }, [articles, meldingen]);
+
+  const undo = useCallback(() => {
+    if (undoStack.length === 0) return;
+    isUndoRedoRef.current = true;
+    const state = undoStack[undoStack.length - 1];
+    setRedoStack((prev) => [...prev, { articles: [...articles], meldingen: [...meldingen] }]);
+    setUndoStack((prev) => prev.slice(0, -1));
+    setArticles(state.articles);
+    setMeldingen(state.meldingen);
+    setHasUnsavedChanges(true);
+    requestAnimationFrame(() => {
+      isUndoRedoRef.current = false;
+    });
+  }, [undoStack, articles, meldingen]);
+
+  const redo = useCallback(() => {
+    if (redoStack.length === 0) return;
+    isUndoRedoRef.current = true;
+    const state = redoStack[redoStack.length - 1];
+    setUndoStack((prev) => [...prev, { articles: [...articles], meldingen: [...meldingen] }]);
+    setRedoStack((prev) => prev.slice(0, -1));
+    setArticles(state.articles);
+    setMeldingen(state.meldingen);
+    setHasUnsavedChanges(true);
+    requestAnimationFrame(() => {
+      isUndoRedoRef.current = false;
+    });
+  }, [redoStack, articles, meldingen]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key !== "z") return;
+      const target = e.target as HTMLElement;
+      const tag = target.tagName?.toLowerCase();
+      const isEditable = tag === "input" || tag === "textarea" || target.isContentEditable;
+      if (isEditable) return; // Laat browser Cmd+Z afhandelen voor tekstvelden
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [undo, redo]);
 
   const fetchArticles = useCallback(async () => {
     setLoadError(null);
@@ -187,18 +255,54 @@ export function PlanningView() {
     setActiveArticle(null);
     if (!over) return;
 
-    const targetDate = over.id as string;
-    if (typeof targetDate !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) return;
-
     const article = articles.find((a) => a.id === active.id);
-    if (!article || article.datum === targetDate) return;
+    if (!article) return;
 
-    setArticles((prev) =>
-      prev.map((a) =>
-        a.id === article.id ? { ...a, datum: targetDate } : a
-      )
-    );
-    setHasUnsavedChanges(true);
+    const overId = over.id as string;
+    const isDateDroppable = typeof overId === "string" && /^\d{4}-\d{2}-\d{2}$/.test(overId);
+
+    if (isDateDroppable) {
+      if (article.datum === overId) return;
+      pushUndo();
+      setArticles((prev) =>
+        prev.map((a) => (a.id === article.id ? { ...a, datum: overId } : a))
+      );
+      setHasUnsavedChanges(true);
+      return;
+    }
+
+    const targetArticle = articles.find((a) => a.id === overId);
+    if (!targetArticle) return;
+
+    if (article.datum === targetArticle.datum) {
+      const sameDay = articles
+        .filter((a) => a.datum === article.datum)
+        .sort((a, b) => a.positie - b.positie);
+      const oldIndex = sameDay.findIndex((a) => a.id === article.id);
+      const newIndex = sameDay.findIndex((a) => a.id === targetArticle.id);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+      pushUndo();
+      const reordered = arrayMove(sameDay, oldIndex, newIndex);
+      setArticles((prev) => {
+        const others = prev.filter((a) => a.datum !== article.datum);
+        const withNewPositie = reordered.map((a, i) => ({ ...a, positie: i }));
+        return [...others, ...withNewPositie];
+      });
+      setHasUnsavedChanges(true);
+    } else {
+      pushUndo();
+      const sameDate = articles.filter((a) => a.datum === targetArticle.datum);
+      const maxPositie = sameDate.length ? Math.max(...sameDate.map((a) => a.positie)) : -1;
+      setArticles((prev) =>
+        prev.map((a) =>
+          a.id === article.id
+            ? { ...a, datum: targetArticle.datum, positie: maxPositie + 1 }
+            : a
+        )
+      );
+      setHasUnsavedChanges(true);
+    }
   };
 
   const handleCardClick = (article: Article) => {
@@ -224,6 +328,7 @@ export function PlanningView() {
   };
 
   const handleDetailSave = (updated: Article) => {
+    pushUndo();
     const isNew = updated.id.startsWith("new-");
     setArticles((prev) => {
       if (isNew) {
@@ -238,7 +343,25 @@ export function PlanningView() {
   };
 
   const handleDetailDelete = (article: Article) => {
+    pushUndo();
     setArticles((prev) => prev.filter((a) => a.id !== article.id));
+    setSelectedArticle(null);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleDuplicate = (article: Article, targetDate: string) => {
+    pushUndo();
+    const sameDate = articles.filter((a) => a.datum === targetDate);
+    const maxPositie = sameDate.length ? Math.max(...sameDate.map((a) => a.positie)) : -1;
+    const duplicate: Article = {
+      ...article,
+      id: `new-${Date.now()}`,
+      datum: targetDate,
+      positie: maxPositie + 1,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setArticles((prev) => [...prev, duplicate]);
     setSelectedArticle(null);
     setHasUnsavedChanges(true);
   };
@@ -252,6 +375,7 @@ export function PlanningView() {
   );
 
   const handleMeldingSave = (weekStart: string, tekst: string) => {
+    pushUndo();
     setMeldingen((prev) => {
       const existing = prev.find((m) => m.weekStart === weekStart);
       if (tekst === "") {
@@ -317,6 +441,8 @@ export function PlanningView() {
         throw new Error(msg);
       }
       setHasUnsavedChanges(false);
+      setUndoStack([]);
+      setRedoStack([]);
       await Promise.all([fetchArticles(), fetchMeldingen()]);
       setSaveMessage("success");
       setTimeout(() => setSaveMessage(null), 3000);
@@ -381,32 +507,47 @@ export function PlanningView() {
     };
   }, [allWeeks]);
 
+  const filteredArticles = useMemo(() => {
+    return articles.filter((a) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (q && !a.onderwerp.toLowerCase().includes(q) && !(a.opmerkingen ?? "").toLowerCase().includes(q)) {
+        return false;
+      }
+      if (filterStatus && a.status !== filterStatus) return false;
+      if (filterCategorie && a.categorie !== filterCategorie) return false;
+      if (filterNaam && a.naam !== filterNaam) return false;
+      if (filterRerun === "ja" && !a.rerun) return false;
+      if (filterRerun === "nee" && a.rerun) return false;
+      return true;
+    });
+  }, [articles, searchQuery, filterStatus, filterCategorie, filterNaam, filterRerun]);
+
+  const uniqueStatuses = useMemo(() => [...new Set(articles.map((a) => a.status).filter(Boolean))].sort(), [articles]);
+  const uniqueCategories = useMemo(() => [...new Set(articles.map((a) => a.categorie).filter(Boolean))].sort(), [articles]);
+  const uniqueNamen = useMemo(() => [...new Set(articles.map((a) => a.naam).filter(Boolean))].sort(), [articles]);
+
   const getArticlesByDateForWeek = useCallback(
     (weekStartStr: string) => {
       const weekDates = getWeekDates(weekStartStr);
       return weekDates.reduce<Record<string, Article[]>>((acc, d) => {
-        acc[d] = articles
+        acc[d] = filteredArticles
           .filter((a) => a.datum === d)
           .sort((a, b) => a.positie - b.positie);
         return acc;
       }, {});
     },
-    [articles]
+    [filteredArticles]
   );
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f8f9fa]">
-        <p className="text-gray-500">Planning laden…</p>
-      </div>
-    );
+    return <PlanningSkeleton />;
   }
 
   if (loadError) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-[#f8f9fa] p-6">
         <p className="text-center text-red-600">{loadError}</p>
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-base text-gray-500">
           Controleer of <code className="rounded bg-gray-200 px-1">DATABASE_URL</code> in .env een geldige Postgres-URL is (bijv. Neon).
         </p>
         <button
@@ -415,7 +556,7 @@ export function PlanningView() {
             setLoading(true);
             fetchArticles();
           }}
-          className="rounded-lg bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-700"
+          className="rounded-lg bg-gray-800 px-4 py-2 text-base text-white hover:bg-gray-700"
         >
           Opnieuw proberen
         </button>
@@ -426,24 +567,89 @@ export function PlanningView() {
   return (
     <div className="flex min-h-screen flex-col bg-[#f8f9fa] pb-24">
       <header className="sticky top-0 z-30 border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
-        <div className="mx-auto grid max-w-[1400px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4">
-          <a
-            href="https://www.gardenersworldmagazine.nl/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="justify-self-start"
-          >
-            <img
-              src="/GW-logo-transparant.webp"
-              alt="Gardeners' World"
-              className="h-10 w-auto object-contain"
+        <div className="mx-auto max-w-[1400px] space-y-3 px-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+            <a
+              href="https://www.gardenersworldmagazine.nl/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="justify-self-start"
+            >
+              <img
+                src="/GW-logo-transparant.webp"
+                alt="Gardeners' World"
+                className="h-10 w-auto object-contain"
+              />
+            </a>
+            <h1 className="text-center text-2xl font-semibold text-gray-800 capitalize">
+              {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
+              {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
+            </h1>
+            <div />
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="search"
+              placeholder="Zoeken…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="max-w-[200px] rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 placeholder-gray-400 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400/30"
             />
-          </a>
-          <h1 className="text-center text-xl font-semibold text-gray-800 capitalize">
-            {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
-            {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
-          </h1>
-          <div />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
+            >
+              <option value="">Alle statussen</option>
+              {uniqueStatuses.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <select
+              value={filterCategorie}
+              onChange={(e) => setFilterCategorie(e.target.value)}
+              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
+            >
+              <option value="">Alle categorieën</option>
+              {uniqueCategories.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <select
+              value={filterNaam}
+              onChange={(e) => setFilterNaam(e.target.value)}
+              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
+            >
+              <option value="">Alle namen</option>
+              {uniqueNamen.map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+            <select
+              value={filterRerun}
+              onChange={(e) => setFilterRerun(e.target.value)}
+              className="rounded-lg border border-gray-200/80 px-3 py-1.5 text-sm text-gray-800 focus:border-blue-400 focus:outline-none"
+            >
+              <option value="">Rerun: alle</option>
+              <option value="ja">Alleen rerun</option>
+              <option value="nee">Geen rerun</option>
+            </select>
+            {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setFilterStatus("");
+                  setFilterCategorie("");
+                  setFilterNaam("");
+                  setFilterRerun("");
+                }}
+                className="text-sm text-gray-500 hover:text-gray-700 underline"
+              >
+                Filters wissen
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -456,27 +662,34 @@ export function PlanningView() {
           <div className="overflow-y-auto">
             <div className="min-w-[900px] rounded-lg border border-gray-200/60 bg-white shadow-sm">
               <div className="grid grid-cols-[minmax(100px,120px)_repeat(7,minmax(100px,1fr))] gap-2 border-b border-gray-200/80 bg-gray-50/80 px-2 py-2">
-                <div className="px-3 py-2 text-sm font-semibold text-gray-600">Week</div>
+                <div className="px-3 py-2 text-base font-semibold text-gray-600">Week</div>
                 {["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"].map((dag) => (
-                  <div key={dag} className="px-2 py-2 text-center text-sm font-semibold text-gray-600">
+                  <div key={dag} className="px-2 py-2 text-center text-base font-semibold text-gray-600">
                     {dag}
                   </div>
                 ))}
               </div>
-              {allWeeks.map((ws) => (
-                <WeekRow
-                  key={ws}
-                  id={`week-${ws}`}
-                  weekStart={ws}
-                  isActiveWeek={ws === currentWeekStart}
-                  articlesByDate={getArticlesByDateForWeek(ws)}
-                  melding={getMeldingForWeek(ws)}
-                  todayStr={todayStr}
-                  onCardClick={handleCardClick}
-                  onAddCard={handleAddCard}
-                  onMeldingClick={setMeldingEditWeek}
-                />
-              ))}
+              {allWeeks.map((ws) => {
+                const weekEnd = new Date(ws + "T12:00:00");
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                const weekEndStr = weekEnd.toISOString().slice(0, 10);
+                const isPastWeek = weekEndStr < todayStr;
+                return (
+                  <WeekRow
+                    key={ws}
+                    id={`week-${ws}`}
+                    weekStart={ws}
+                    isActiveWeek={ws === currentWeekStart}
+                    isPastWeek={isPastWeek}
+                    articlesByDate={getArticlesByDateForWeek(ws)}
+                    melding={getMeldingForWeek(ws)}
+                    todayStr={todayStr}
+                    onCardClick={handleCardClick}
+                    onAddCard={handleAddCard}
+                    onMeldingClick={setMeldingEditWeek}
+                  />
+                );
+              })}
             </div>
           </div>
 
@@ -490,7 +703,7 @@ export function PlanningView() {
                       <div className="flex shrink-0 flex-wrap items-center gap-1.5 self-start">
                         {activeArticle.categorie && categoryStyle && (
                           <span
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium"
+                            className="rounded px-1.5 py-0.5 text-xs font-medium"
                             style={{ backgroundColor: categoryStyle.bg, color: categoryStyle.text }}
                           >
                             {activeArticle.categorie}
@@ -498,19 +711,19 @@ export function PlanningView() {
                         )}
                         {activeArticle.rerun && (
                           <span
-                            className="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                            className="rounded px-1.5 py-0.5 text-xs font-medium text-white"
                             style={{ backgroundColor: "#7B2E83" }}
                           >
                             Rerun
                           </span>
                         )}
                       </div>
-                      <p className="min-w-0 font-medium line-clamp-3 text-xs leading-snug">
+                      <p className="min-w-0 font-medium line-clamp-3 text-sm leading-snug">
                         {activeArticle.onderwerp}
                       </p>
                     </div>
                     {activeArticle.naam && (
-                      <p className="mt-1 flex items-center gap-1.5 text-[11px] text-gray-500">
+                      <p className="mt-1 flex items-center gap-1.5 text-sm text-gray-500">
                         {getStatusColor(activeArticle.status) && (
                           <span
                             className={`h-1.5 w-1.5 shrink-0 rounded-full ${getStatusColor(activeArticle.status)}`}
@@ -528,7 +741,7 @@ export function PlanningView() {
         </DndContext>
       </main>
 
-      <footer className="mt-auto flex justify-center border-t border-gray-200/60 bg-white/50 py-3">
+      <footer className="mt-auto flex justify-center border-t border-gray-200/60 bg-[#f8f9fa]/50 py-3">
         <button
           type="button"
           onClick={handleExport}
@@ -565,6 +778,7 @@ export function PlanningView() {
             onClose={() => setSelectedArticle(null)}
             onSave={handleDetailSave}
             onDelete={handleDetailDelete}
+            onDuplicate={handleDuplicate}
           />
         </>
       )}
@@ -572,7 +786,7 @@ export function PlanningView() {
       {meldingEditWeek && (
         <MeldingPanel
           weekStart={meldingEditWeek}
-          weekLabel={`Wk ${getISOWeek(meldingEditWeek)}`}
+          weekLabel={`Week ${getISOWeek(meldingEditWeek)}`}
           initialTekst={getMeldingForWeek(meldingEditWeek) ?? ""}
           onSave={(tekst) => handleMeldingSave(meldingEditWeek, tekst)}
           onClose={() => setMeldingEditWeek(null)}
@@ -585,7 +799,7 @@ export function PlanningView() {
 
       {saveMessage && (
         <div
-          className={`fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium shadow-lg ${
+          className={`fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-base font-medium shadow-lg ${
             saveMessage === "success"
               ? "bg-emerald-600 text-white"
               : "bg-red-600 text-white"

@@ -10,10 +10,13 @@ interface ArticleDetailPanelProps {
   onClose: () => void;
   onSave: (article: Article) => void;
   onDelete?: (article: Article) => void;
+  onDuplicate?: (article: Article, targetDate: string) => void;
 }
 
-export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: ArticleDetailPanelProps) {
+export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDuplicate }: ArticleDetailPanelProps) {
   const [form, setForm] = useState<Partial<Article>>({});
+  const [showDuplicatePicker, setShowDuplicatePicker] = useState(false);
+  const [duplicateTargetDate, setDuplicateTargetDate] = useState("");
 
   const NAAM_OPTIES = ["Lizanne", "Govert", "Iona", "Helga", "Koen"] as const;
   const STATUS_OPTIES = ["Mee bezig", "Gepubliceerd", "Ingepland"] as const;
@@ -31,6 +34,7 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: Artic
 
   useEffect(() => {
     if (article) {
+      setDuplicateTargetDate(article.datum);
       setForm({
         id: article.id,
         datum: article.datum,
@@ -80,22 +84,31 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: Artic
   return (
     <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md border-l border-gray-200/80 bg-white shadow-xl">
       <div className="flex h-full flex-col">
-        <div className="flex items-center justify-between border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-200/80 bg-white/90 backdrop-blur px-6 py-4">
           <h2 className="text-lg font-semibold text-gray-800">
             {isNew ? "Nieuw artikel" : "Artikel bewerken"}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-            aria-label="Sluiten"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="submit"
+              form="article-detail-form"
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors"
+            >
+              {isNew ? "Kaart toevoegen" : "Wijzigingen opslaan"}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              aria-label="Sluiten"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto bg-[#f8f9fa] p-6">
+        <form id="article-detail-form" onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-y-auto bg-[#f8f9fa] p-6">
           <div className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-600">Status</label>
@@ -251,6 +264,7 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: Artic
                 onChange={(val) => setForm((f) => ({ ...f, opmerkingen: val }))}
                 placeholder="Notities, deadlines, etc. Gebruik markdown: **vet**, *cursief*, # kop, - bullet"
                 minRows={4}
+                authorOptions={NAAM_OPTIES}
               />
             </div>
           </div>
@@ -267,10 +281,50 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete }: Artic
                 type="submit"
                 className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 transition-colors"
               >
-                {isNew ? "Kaart toevoegen" : "Wijzigingen toepassen"}
+                {isNew ? "Kaart toevoegen" : "Wijzigingen opslaan"}
               </button>
             </div>
-            {!isNew && onDelete && (
+            {!isNew && onDuplicate && (
+              <div className="space-y-2">
+                {showDuplicatePicker ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      value={duplicateTargetDate}
+                      onChange={(e) => setDuplicateTargetDate(e.target.value)}
+                      className={inputClasses}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onDuplicate(article, duplicateTargetDate);
+                        setShowDuplicatePicker(false);
+                        onClose();
+                      }}
+                      className="shrink-0 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                    >
+                      Kopiëren
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowDuplicatePicker(false)}
+                      className="shrink-0 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+                    >
+                      Annuleren
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowDuplicatePicker(true)}
+                    className="w-full rounded-xl border border-gray-200/80 px-4 py-2 font-medium text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-300 transition-colors"
+                  >
+                    Dupliceren naar andere datum
+                  </button>
+                )}
+              </div>
+            )}
+            {onDelete && (
               <button
                 type="button"
                 onClick={handleDelete}

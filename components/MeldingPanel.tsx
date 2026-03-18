@@ -10,12 +10,18 @@ interface MeldingPanelProps {
   onClose: () => void;
 }
 
-function formatWeekLabel(weekStart: string): string {
+function formatWeekRange(weekStart: string): string {
   const start = new Date(weekStart + "T12:00:00");
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
-  const fmt = (d: Date) => d.toLocaleDateString("nl-NL", { day: "numeric", month: "short" });
-  return `${fmt(start)} – ${fmt(end)}`;
+  const startDay = start.getDate();
+  const endDay = end.getDate();
+  const startMonth = start.toLocaleDateString("nl-NL", { month: "long" });
+  const endMonth = end.toLocaleDateString("nl-NL", { month: "long" });
+  if (startMonth === endMonth) {
+    return `${startDay} - ${endDay} ${startMonth}`;
+  }
+  return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
 }
 
 export function MeldingPanel({
@@ -46,7 +52,7 @@ export function MeldingPanel({
       />
       <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-6 shadow-xl">
         <h3 className="mb-2 text-lg font-semibold text-gray-800">Melding voor {weekLabel}</h3>
-        <p className="mb-4 text-sm text-gray-500">{formatWeekLabel(weekStart)}</p>
+        <p className="mb-4 text-sm text-gray-500">{formatWeekRange(weekStart)}</p>
         <form onSubmit={handleSubmit}>
           <textarea
             ref={inputRef}

@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Dagkolommen: kies één van de opties hieronder (vervang de waarden van --day-column-bg)
+     Revert: --day-column-bg: rgba(255,255,255,0.5); --day-column-active-bg: #fef3c7; */
+  --day-column-bg: #f5f0eb; /* Optie 2: Zand – warm, rustig */
+  /* --day-column-bg: #f1f5f9; */ /* Optie 1: Slate – koel, professioneel */
+  /* --day-column-bg: #f3e8f5; */ /* Optie 3: Lavender – zacht paars */
+  /* --day-column-bg: #ecfdf5; */ /* Optie 4: Mint – fris, natuurlijk */
+  /* --day-column-bg: #fff7ed; */ /* Optie 5: Perzik – warm, vriendelijk */
+  /* --day-column-bg: #e8e4ec; */ /* Optie 6: Grijs-lila – neutraal, subtiel */
+  --day-column-active-bg: #FFF8DC;
 }
 
 @theme inline {

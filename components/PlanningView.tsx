@@ -332,14 +332,14 @@ export function PlanningView() {
 
   const handleDetailSave = (updated: Article) => {
     pushUndo();
-    const isNew = updated.id.startsWith("new-");
     setArticles((prev) => {
-      if (isNew) {
-        const sameDate = prev.filter((a) => a.datum === updated.datum);
-        const maxPositie = sameDate.length ? Math.max(...sameDate.map((a) => a.positie)) : -1;
-        return [...prev, { ...updated, positie: maxPositie + 1 }];
+      const exists = prev.some((a) => a.id === updated.id);
+      if (exists) {
+        return prev.map((a) => (a.id === updated.id ? updated : a));
       }
-      return prev.map((a) => (a.id === updated.id ? updated : a));
+      const sameDate = prev.filter((a) => a.datum === updated.datum);
+      const maxPositie = sameDate.length ? Math.max(...sameDate.map((a) => a.positie)) : -1;
+      return [...prev, { ...updated, positie: maxPositie + 1 }];
     });
     setSelectedArticle(null);
     setHasUnsavedChanges(true);
@@ -593,30 +593,29 @@ export function PlanningView() {
       <header className="sticky top-0 z-30 border-b border-white/20 bg-[#4C8336] px-6 py-4">
         <div className="mx-auto max-w-[1400px] px-4">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="flex items-center gap-4 justify-self-start">
-              <a
-                href="https://www.gardenersworldmagazine.nl/"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <img
-                  src="/GW-logo-transparant.webp"
-                  alt="Gardeners' World"
-                  className="h-10 w-auto object-contain brightness-0 invert"
-                />
-              </a>
+            <a
+              href="https://www.gardenersworldmagazine.nl/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="justify-self-start"
+            >
+              <img
+                src="/GW-logo-transparant.webp"
+                alt="Gardeners' World"
+                className="h-10 w-auto object-contain brightness-0 invert"
+              />
+            </a>
+            <h1 className="text-center text-2xl font-semibold capitalize text-[#ffffff]">
+              {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
+              {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
+            </h1>
+            <div className="relative flex justify-end items-center gap-2" ref={filterPanelRef}>
               <Link
                 href="/backlog"
                 className="rounded-lg px-3 py-2 text-sm font-medium text-[#ffffff]/90 hover:bg-white/20 hover:text-white transition-colors"
               >
                 Backlog
               </Link>
-            </div>
-            <h1 className="text-center text-2xl font-semibold capitalize text-[#ffffff]">
-              {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
-              {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
-            </h1>
-            <div className="relative flex justify-end" ref={filterPanelRef}>
               <button
                 type="button"
                 onClick={() => setShowFilters((v) => !v)}

@@ -48,6 +48,7 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
         status: article.status ?? "",
         categorie: article.categorie ?? "",
         rerun: article.rerun ?? false,
+        nieuwsbrief: article.nieuwsbrief ?? false,
         opmerkingen: article.opmerkingen ?? "",
       });
     }
@@ -71,6 +72,7 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
         status: form.status ?? "",
         categorie: form.categorie ?? "",
         rerun: form.rerun ?? false,
+        nieuwsbrief: form.nieuwsbrief ?? false,
         opmerkingen: form.opmerkingen ?? "",
       });
       onClose();
@@ -215,6 +217,18 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
                   Nee
                 </button>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="nieuwsbrief"
+                checked={form.nieuwsbrief ?? false}
+                onChange={(e) => setForm((f) => ({ ...f, nieuwsbrief: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 text-[#4C8336] focus:ring-[#4C8336]/30"
+              />
+              <label htmlFor="nieuwsbrief" className="text-sm font-medium text-gray-600">
+                Nieuwsbrief
+              </label>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-600">Url</label>

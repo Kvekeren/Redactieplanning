@@ -74,6 +74,7 @@ export function BacklogView() {
       status: "",
       categorie: "",
       rerun: false,
+      nieuwsbrief: false,
       opmerkingen: "",
       positie: backlogArticles.length,
       createdAt: new Date().toISOString(),

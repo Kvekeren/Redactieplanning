@@ -20,6 +20,7 @@ model Article {
   status       String   @default("")  // Mee bezig, Gepubliceerd, Ingepland
   categorie    String   @default("")
   rerun        Boolean  @default(false)
+  nieuwsbrief  Boolean  @default(false)
   opmerkingen  String?  @default("")
   positie      Int      @default(0)
   createdAt    DateTime @default(now())

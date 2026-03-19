@@ -117,6 +117,7 @@ export function PlanningView() {
   const [filterCategorie, setFilterCategorie] = useState<string>("");
   const [filterNaam, setFilterNaam] = useState<string>("");
   const [filterRerun, setFilterRerun] = useState<string>(""); // "" = alle, "ja" = alleen rerun, "nee" = geen rerun
+  const [filterNieuwsbrief, setFilterNieuwsbrief] = useState<string>(""); // "" = alle, "ja" = alleen nieuwsbrief
   const [showFilters, setShowFilters] = useState(false);
   const filterPanelRef = useRef<HTMLDivElement>(null);
 
@@ -322,6 +323,7 @@ export function PlanningView() {
       status: "",
       categorie: "",
       rerun: false,
+      nieuwsbrief: false,
       opmerkingen: "",
       positie: 0,
       createdAt: new Date().toISOString(),
@@ -542,9 +544,10 @@ export function PlanningView() {
       if (filterNaam && a.naam !== filterNaam) return false;
       if (filterRerun === "ja" && !a.rerun) return false;
       if (filterRerun === "nee" && a.rerun) return false;
+      if (filterNieuwsbrief === "ja" && !a.nieuwsbrief) return false;
       return true;
     });
-  }, [articles, searchQuery, filterStatus, filterCategorie, filterNaam, filterRerun]);
+  }, [articles, searchQuery, filterStatus, filterCategorie, filterNaam, filterRerun, filterNieuwsbrief]);
 
   const uniqueStatuses = useMemo(() => [...new Set(articles.map((a) => a.status).filter(Boolean))].sort(), [articles]);
   const uniqueCategories = useMemo(() => [...new Set(articles.map((a) => a.categorie).filter(Boolean))].sort(), [articles]);
@@ -620,7 +623,7 @@ export function PlanningView() {
                 type="button"
                 onClick={() => setShowFilters((v) => !v)}
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  showFilters || searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun
+                  showFilters || searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun || filterNieuwsbrief
                     ? "bg-white/30 text-[#ffffff] hover:bg-white/40"
                     : "bg-white/15 text-[#ffffff] hover:bg-white/25"
                 }`}
@@ -631,7 +634,7 @@ export function PlanningView() {
                 <svg className="h-4 w-4 shrink-0" fill="none" stroke="#ffffff" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
-                {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun) && (
+                {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun || filterNieuwsbrief) && (
                   <span className="flex h-2 w-2 rounded-full bg-[#ffffff]" aria-hidden />
                 )}
               </button>
@@ -684,6 +687,14 @@ export function PlanningView() {
                       <option value="ja">Alleen rerun</option>
                       <option value="nee">Geen rerun</option>
                     </select>
+                    <select
+                      value={filterNieuwsbrief}
+                      onChange={(e) => setFilterNieuwsbrief(e.target.value)}
+                      className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-800 focus:border-[#4C8336] focus:outline-none"
+                    >
+                      <option value="">Nieuwsbrief: alle</option>
+                      <option value="ja">Alleen nieuwsbrief</option>
+                    </select>
                     <button
                       type="button"
                       onClick={() => {
@@ -692,9 +703,10 @@ export function PlanningView() {
                         setFilterCategorie("");
                         setFilterNaam("");
                         setFilterRerun("");
+                        setFilterNieuwsbrief("");
                       }}
                       className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                        searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun
+                        searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun || filterNieuwsbrief
                           ? "bg-[#4C8336] text-white hover:bg-[#3d6a2b]"
                           : "bg-gray-100 text-gray-500"
                       }`}

@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       status: string;
       categorie: string;
       rerun?: boolean;
+      nieuwsbrief?: boolean;
       opmerkingen?: string;
       positie: number;
     }> };
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
                 status: a.status ?? "",
                 categorie: a.categorie,
                 rerun: a.rerun ?? false,
+                nieuwsbrief: a.nieuwsbrief ?? false,
                 opmerkingen: a.opmerkingen ?? "",
                 positie: a.positie,
               },
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
                 status: a.status ?? "",
                 categorie: a.categorie,
                 rerun: a.rerun ?? false,
+                nieuwsbrief: a.nieuwsbrief ?? false,
                 opmerkingen: a.opmerkingen ?? "",
                 positie: a.positie,
               },

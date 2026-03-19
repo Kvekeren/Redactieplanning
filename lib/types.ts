@@ -7,6 +7,7 @@ export interface Article {
   status: string;
   categorie: string;
   rerun: boolean;
+  nieuwsbrief: boolean;
   opmerkingen: string | null;
   positie: number;
   createdAt: string;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
@@ -41,7 +42,7 @@ function getWeekDates(weekStart: string): string[] {
 }
 
 function getAllWeeks(articles: Article[]): string[] {
-  const dates = articles.map((a) => a.datum);
+  const dates = articles.filter((a) => a.datum != null).map((a) => a.datum!);
   if (dates.length === 0) {
     const today = new Date();
     const start = getWeekStart(today);
@@ -258,7 +259,7 @@ export function PlanningView() {
     if (!over) return;
 
     const article = articles.find((a) => a.id === active.id);
-    if (!article) return;
+    if (!article || !article.datum) return;
 
     const overId = over.id as string;
     const isDateDroppable = typeof overId === "string" && /^\d{4}-\d{2}-\d{2}$/.test(overId);
@@ -347,6 +348,15 @@ export function PlanningView() {
   const handleDetailDelete = (article: Article) => {
     pushUndo();
     setArticles((prev) => prev.filter((a) => a.id !== article.id));
+    setSelectedArticle(null);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleMoveToBacklog = (article: Article) => {
+    pushUndo();
+    setArticles((prev) =>
+      prev.map((a) => (a.id === article.id ? { ...a, datum: null } : a))
+    );
     setSelectedArticle(null);
     setHasUnsavedChanges(true);
   };
@@ -545,7 +555,7 @@ export function PlanningView() {
       const weekDates = getWeekDates(weekStartStr);
       return weekDates.reduce<Record<string, Article[]>>((acc, d) => {
         acc[d] = filteredArticles
-          .filter((a) => a.datum === d)
+          .filter((a) => a.datum != null && a.datum === d)
           .sort((a, b) => a.positie - b.positie);
         return acc;
       }, {});
@@ -583,19 +593,26 @@ export function PlanningView() {
       <header className="sticky top-0 z-30 border-b border-white/20 bg-[#4C8336] px-6 py-4">
         <div className="mx-auto max-w-[1400px] px-4">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <a
-              href="https://www.gardenersworldmagazine.nl/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="justify-self-start"
-            >
-              <img
-                src="/GW-logo-transparant.webp"
-                alt="Gardeners' World"
-                className="h-10 w-auto object-contain brightness-0 invert"
-              />
-            </a>
-            <h1 className="text-center text-2xl font-semibold text-white capitalize">
+            <div className="flex items-center gap-4 justify-self-start">
+              <a
+                href="https://www.gardenersworldmagazine.nl/"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <img
+                  src="/GW-logo-transparant.webp"
+                  alt="Gardeners' World"
+                  className="h-10 w-auto object-contain brightness-0 invert"
+                />
+              </a>
+              <Link
+                href="/backlog"
+                className="rounded-lg px-3 py-2 text-sm font-medium text-[#ffffff]/90 hover:bg-white/20 hover:text-white transition-colors"
+              >
+                Backlog
+              </Link>
+            </div>
+            <h1 className="text-center text-2xl font-semibold capitalize text-[#ffffff]">
               {(visibleMonth || getMonthFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10)))}{" "}
               {visibleMonth ? visibleYear : getYearFromWeekStart(allWeeks[0] ?? new Date().toISOString().slice(0, 10))}
             </h1>
@@ -605,18 +622,18 @@ export function PlanningView() {
                 onClick={() => setShowFilters((v) => !v)}
                 className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   showFilters || searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun
-                    ? "bg-white/30 text-white hover:bg-white/40"
-                    : "bg-white/15 text-white hover:bg-white/25"
+                    ? "bg-white/30 text-[#ffffff] hover:bg-white/40"
+                    : "bg-white/15 text-[#ffffff] hover:bg-white/25"
                 }`}
                 aria-expanded={showFilters}
                 aria-haspopup="true"
                 aria-label="Filter"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <svg className="h-4 w-4 shrink-0" fill="none" stroke="#ffffff" viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                 </svg>
                 {(searchQuery || filterStatus || filterCategorie || filterNaam || filterRerun) && (
-                  <span className="flex h-2 w-2 rounded-full bg-white" aria-hidden />
+                  <span className="flex h-2 w-2 rounded-full bg-[#ffffff]" aria-hidden />
                 )}
               </button>
               {showFilters && (
@@ -819,6 +836,7 @@ export function PlanningView() {
             onSave={handleDetailSave}
             onDelete={handleDetailDelete}
             onDuplicate={handleDuplicate}
+            onMoveToBacklog={handleMoveToBacklog}
           />
         </>
       )}

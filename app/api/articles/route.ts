@@ -4,7 +4,17 @@ import { prisma } from "@/lib/prisma";
 export async function GET() {
   try {
     const articles = await prisma.article.findMany({
-      orderBy: [{ datum: "asc" }, { positie: "asc" }],
+      orderBy: [{ positie: "asc" }],
+    });
+    // Sorteer: datum nulls last, dan datum asc, dan positie
+    articles.sort((a, b) => {
+      const aHasDate = a.datum != null;
+      const bHasDate = b.datum != null;
+      if (aHasDate !== bHasDate) return aHasDate ? -1 : 1;
+      if (a.datum && b.datum) {
+        if (a.datum !== b.datum) return a.datum < b.datum ? -1 : 1;
+      }
+      return a.positie - b.positie;
     });
     return NextResponse.json(articles);
   } catch (error) {
@@ -18,7 +28,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { articles } = body as { articles: Array<{
       id: string;
-      datum: string;
+      datum?: string | null;
       onderwerp: string;
       url?: string | null;
       naam: string;
@@ -51,10 +61,11 @@ export async function POST(request: Request) {
         }
 
         await Promise.all([
-          ...toCreate.map((a) =>
-            tx.article.create({
+          ...toCreate.map((a) => {
+            const datum = a.datum?.trim() || null;
+            return tx.article.create({
               data: {
-                datum: a.datum,
+                ...(datum != null && { datum }),
                 onderwerp: a.onderwerp,
                 url: a.url ?? null,
                 naam: a.naam ?? "",
@@ -64,13 +75,14 @@ export async function POST(request: Request) {
                 opmerkingen: a.opmerkingen ?? "",
                 positie: a.positie,
               },
-            })
-          ),
-          ...toUpdate.map((a) =>
-            tx.article.update({
+            });
+          }),
+          ...toUpdate.map((a) => {
+            const datum = a.datum?.trim() || null;
+            return tx.article.update({
               where: { id: a.id },
               data: {
-                datum: a.datum,
+                datum,
                 onderwerp: a.onderwerp,
                 url: a.url ?? null,
                 naam: a.naam ?? "",
@@ -80,8 +92,8 @@ export async function POST(request: Request) {
                 opmerkingen: a.opmerkingen ?? "",
                 positie: a.positie,
               },
-            })
-          ),
+            });
+          }),
         ]);
       },
       { timeout: 15000 }

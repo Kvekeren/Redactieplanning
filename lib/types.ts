@@ -1,6 +1,6 @@
 export interface Article {
   id: string;
-  datum: string;
+  datum: string | null;
   onderwerp: string;
   url: string | null;
   naam: string;

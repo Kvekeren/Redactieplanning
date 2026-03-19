@@ -13,7 +13,7 @@ datasource db {
 
 model Article {
   id           String   @id @default(cuid())
-  datum        String   // YYYY-MM-DD
+  datum        String?  // YYYY-MM-DD, null = in backlog
   onderwerp    String
   url          String?  // optionele url van het artikel
   naam         String   @default("")  // Lizanne, Govert, Iona, Helga, Koen

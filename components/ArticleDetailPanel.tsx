@@ -11,9 +11,13 @@ interface ArticleDetailPanelProps {
   onSave: (article: Article) => void;
   onDelete?: (article: Article) => void;
   onDuplicate?: (article: Article, targetDate: string) => void;
+  onMoveToBacklog?: (article: Article) => void;
+  isBacklog?: boolean;
+  /** Bij backlog: true = kaart staat al in lijst (bewerken), false = nieuwe kaart */
+  isExistingInBacklog?: boolean;
 }
 
-export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDuplicate }: ArticleDetailPanelProps) {
+export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDuplicate, onMoveToBacklog, isBacklog, isExistingInBacklog }: ArticleDetailPanelProps) {
   const [form, setForm] = useState<Partial<Article>>({});
   const [showDuplicatePicker, setShowDuplicatePicker] = useState(false);
   const [duplicateTargetDate, setDuplicateTargetDate] = useState("");
@@ -34,7 +38,7 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
 
   useEffect(() => {
     if (article) {
-      setDuplicateTargetDate(article.datum);
+      setDuplicateTargetDate(article.datum ?? new Date().toISOString().slice(0, 10));
       setForm({
         id: article.id,
         datum: article.datum,
@@ -51,14 +55,16 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
 
   if (!article) return null;
 
-  const isNew = article.id.startsWith("new-");
+  const isNew = isBacklog ? !isExistingInBacklog : article.id.startsWith("new-");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.datum && form.onderwerp !== undefined && form.onderwerp.trim()) {
+    if (form.onderwerp !== undefined && form.onderwerp.trim()) {
+      const datum = form.datum?.trim() || null;
+      if (!isBacklog && !datum) return; // Kalender vereist datum
       onSave({
         ...article,
-        datum: form.datum,
+        datum,
         onderwerp: form.onderwerp.trim(),
         url: form.url?.trim() || null,
         naam: form.naam ?? "",
@@ -172,13 +178,15 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-600">Datum</label>
+              <label className="mb-1 block text-sm font-medium text-gray-600">
+                Datum {isBacklog && <span className="text-gray-400 font-normal">(optioneel – vul in om aan kalender toe te voegen)</span>}
+              </label>
               <input
                 type="date"
                 value={form.datum ?? ""}
                 onChange={(e) => setForm((f) => ({ ...f, datum: e.target.value }))}
                 className={inputClasses}
-                required
+                required={!isBacklog}
               />
             </div>
             <div>
@@ -284,7 +292,19 @@ export function ArticleDetailPanel({ article, onClose, onSave, onDelete, onDupli
                 {isNew ? "Kaart toevoegen" : "Wijzigingen opslaan"}
               </button>
             </div>
-            {!isNew && onDuplicate && (
+            {!isNew && article.datum && onMoveToBacklog && (
+              <button
+                type="button"
+                onClick={() => {
+                  onMoveToBacklog({ ...article, datum: null });
+                  onClose();
+                }}
+                className="w-full rounded-xl border border-amber-200 px-4 py-2 font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 hover:border-amber-300 transition-colors"
+              >
+                Verplaats naar backlog
+              </button>
+            )}
+            {!isNew && onDuplicate && article.datum && (
               <div className="space-y-2">
                 {showDuplicatePicker ? (
                   <div className="flex gap-2">
